@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IOT Dashboard | Solar E-Tricycle</title>
+
+<!-- Leaflet Maps -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+    body {
+        font-family: Poppins, sans-serif;
+        background: #f1f5f9;
+        margin: 0;
+        padding: 20px;
+        color: #222;
+    }
+
+    h1 {
+        text-align: center;
+        margin-bottom: 5px;
+    }
+
+    .subtitle {
+        text-align: center;
+        color: #555;
+        margin-bottom: 30px;
+    }
+
+    .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+        gap: 20px;
+        width: 95%;
+        margin: auto;
+    }
+
+    .card {
+        background: white;
+        padding: 18px;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+
+    .card h3 {
+        margin-top: 0;
+        color: #333;
+    }
+
+    .value {
+        font-size: 26px;
+        font-weight: bold;
+        color: #007bff;
+    }
+
+    button {
+        background: #007bff;
+        color: white;
+        padding: 6px 12px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        margin-top: 8px;
+    }
+
+    #map {
+        width: 100%;
+        height: 250px;
+        border-radius: 12px;
+    }
+</style>
+</head>
+
+<body>
+
+<h1>Advanced Solar Electric Tricycle</h1>
+<p class="subtitle">Real-time IoT Dashboard (ESP32 + ThingSpeak)</p>
+
+<div class="grid">
+
+    <!-- Temperature + Chart -->
+    <div class="card">
+        <h3>Temperature (°C)</h3>
+        <div class="value" id="temp">--</div>
+        <canvas id="tempChart" height="130"></canvas>
+        <button onclick="fetchData()">Refresh</button>
+    </div>
+
+    <!-- Humidity + Chart -->
+    <div class="card">
+        <h3>Humidity (%)</h3>
+        <div class="value" id="hum">--</div>
+        <canvas id="humChart" height="130"></canvas>
+        <button onclick="fetchData()">Refresh</button>
+    </div>
+
+    <!-- Heart Rate + Chart -->
+    <div class="card">
+        <h3>Heart Rate (BPM)</h3>
+        <div class="value" id="bpm">--</div>
+        <canvas id="bpmChart" height="130"></canvas>
+        <button onclick="fetchData()">Refresh</button>
+    </div>
+
+    <!-- SPO2 + Chart -->
+    <div class="card">
+        <h3>SpO₂ (%)</h3>
+        <div class="value" id="spo2">--</div>
+        <canvas id="spo2Chart" height="130"></canvas>
+        <button onclick="fetchData()">Refresh</button>
+    </div>
+
+    <!-- Distance + Chart -->
+    <div class="card">
+        <h3>Distance (cm)</h3>
+        <div class="value" id="distance">--</div>
+        <canvas id="distChart" height="130"></canvas>
+        <button onclick="fetchData()">Refresh</button>
+    </div>
+
+    <!-- GPS & Map -->
+    <div class="card">
+        <h3>GPS Location</h3>
+        <p><b>Latitude:</b> <span id="lat">--</span></p>
+        <p><b>Longitude:</b> <span id="lon">--</span></p>
+        <div id="map"></div>
+        <button onclick="fetchData()">Refresh</button>
+    </div>
+
+</div>
+
+<script>
+const CHANNEL_ID = "3161036";
+const API_KEY = "W9BRV0UO44PT32YJ";
+
+// ------------------ MAP ------------------
+let map = L.map('map').setView([30.5161, 76.6599], 5);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+let marker = L.marker([30.5161, 76.6599]).addTo(map);
+
+// ------------------ CHARTS ------------------
+function makeChart(ctx) {
+    return new Chart(ctx, {
+        type: "line",
+        data: {
+            labels: [],
+            datasets: [{
+                label: "",
+                data: [],
+                borderColor: "#007bff",
+                borderWidth: 2,
+                fill: false,
+                tension: 0.3
+            }]
+        },
+        options: { responsive: true }
+    });
+}
+
+let tempChart = makeChart(document.getElementById("tempChart"));
+let humChart = makeChart(document.getElementById("humChart"));
+let bpmChart = makeChart(document.getElementById("bpmChart"));
+let spo2Chart = makeChart(document.getElementById("spo2Chart"));
+let distChart = makeChart(document.getElementById("distChart"));
+
+function updateChart(chart, value) {
+    const t = new Date().toLocaleTimeString();
+    chart.data.labels.push(t);
+    chart.data.datasets[0].data.push(value);
+    if (chart.data.labels.length > 10) {
+        chart.data.labels.shift();
+        chart.data.datasets[0].data.shift();
+    }
+    chart.update();
+}
+
+// ------------------ FETCH DATA ------------------
+function fetchData() {
+
+    fetch(`https://api.thingspeak.com/channels/${CHANNEL_ID}/feeds.json?api_key=${API_KEY}&results=1`)
+        .then(res => res.json())
+        .then(data => {
+            let f = data.feeds[0];
+
+            let temp = f.field1;
+            let hum = f.field2;
+            let bpm = f.field3;
+            let spo2 = f.field4;
+            let dist = f.field5;
+            let lat = f.field6;
+            let lon = f.field7;
+
+            document.getElementById("temp").innerText = temp || "--";
+            document.getElementById("hum").innerText = hum || "--";
+            document.getElementById("bpm").innerText = bpm || "--";
+            document.getElementById("spo2").innerText = spo2 || "--";
+            document.getElementById("distance").innerText = dist || "--";
+
+            document.getElementById("lat").innerText = lat || "--";
+            document.getElementById("lon").innerText = lon || "--";
+
+            // update graphs
+            if (temp) updateChart(tempChart, temp);
+            if (hum) updateChart(humChart, hum);
+            if (bpm) updateChart(bpmChart, bpm);
+            if (spo2) updateChart(spo2Chart, spo2);
+            if (dist) updateChart(distChart, dist);
+
+            // update GPS map
+            if (lat && lon) {
+                map.setView([lat, lon], 15);
+                marker.setLatLng([lat, lon]);
+            }
+        })
+        .catch(err => console.error(err));
+}
+
+setInterval(fetchData, 30000);
+fetchData();
+</script>
+
+</body>
+</html>
