@@ -5,11 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>IOT Dashboard | Solar E-Tricycle</title>
 
-<!-- Leaflet Maps -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
-<!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
@@ -83,7 +81,6 @@
 
 <div class="grid">
 
-    <!-- Temperature + Chart -->
     <div class="card">
         <h3>Temperature (°C)</h3>
         <div class="value" id="temp">--</div>
@@ -91,7 +88,6 @@
         <button onclick="fetchData()">Refresh</button>
     </div>
 
-    <!-- Humidity + Chart -->
     <div class="card">
         <h3>Humidity (%)</h3>
         <div class="value" id="hum">--</div>
@@ -99,7 +95,6 @@
         <button onclick="fetchData()">Refresh</button>
     </div>
 
-    <!-- Heart Rate + Chart -->
     <div class="card">
         <h3>Heart Rate (BPM)</h3>
         <div class="value" id="bpm">--</div>
@@ -107,7 +102,6 @@
         <button onclick="fetchData()">Refresh</button>
     </div>
 
-    <!-- SPO2 + Chart -->
     <div class="card">
         <h3>SpO₂ (%)</h3>
         <div class="value" id="spo2">--</div>
@@ -115,7 +109,6 @@
         <button onclick="fetchData()">Refresh</button>
     </div>
 
-    <!-- Distance + Chart -->
     <div class="card">
         <h3>Distance (cm)</h3>
         <div class="value" id="distance">--</div>
@@ -123,7 +116,6 @@
         <button onclick="fetchData()">Refresh</button>
     </div>
 
-    <!-- GPS & Map -->
     <div class="card">
         <h3>GPS Location</h3>
         <p><b>Latitude:</b> <span id="lat">--</span></p>
@@ -138,12 +130,13 @@
 const CHANNEL_ID = "3161036";
 const API_KEY = "W9BRV0UO44PT32YJ";
 
-// ------------------ MAP ------------------
-let map = L.map('map').setView([30.5161, 76.6599], 5);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-let marker = L.marker([30.5161, 76.6599]).addTo(map);
+const DEFAULT_LAT = 30.516077;
+const DEFAULT_LON = 76.659956;
 
-// ------------------ CHARTS ------------------
+let map = L.map('map').setView([DEFAULT_LAT, DEFAULT_LON], 15);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+let marker = L.marker([DEFAULT_LAT, DEFAULT_LON]).addTo(map);
+
 function makeChart(ctx) {
     return new Chart(ctx, {
         type: "line",
@@ -172,19 +165,21 @@ function updateChart(chart, value) {
     const t = new Date().toLocaleTimeString();
     chart.data.labels.push(t);
     chart.data.datasets[0].data.push(value);
+
     if (chart.data.labels.length > 10) {
         chart.data.labels.shift();
         chart.data.datasets[0].data.shift();
     }
+
     chart.update();
 }
 
-// ------------------ FETCH DATA ------------------
 function fetchData() {
 
     fetch(`https://api.thingspeak.com/channels/${CHANNEL_ID}/feeds.json?api_key=${API_KEY}&results=1`)
         .then(res => res.json())
         .then(data => {
+
             let f = data.feeds[0];
 
             let temp = f.field1;
@@ -195,33 +190,37 @@ function fetchData() {
             let lat = f.field6;
             let lon = f.field7;
 
+            // Update UI
             document.getElementById("temp").innerText = temp || "--";
             document.getElementById("hum").innerText = hum || "--";
             document.getElementById("bpm").innerText = bpm || "--";
             document.getElementById("spo2").innerText = spo2 || "--";
             document.getElementById("distance").innerText = dist || "--";
 
-            document.getElementById("lat").innerText = lat || "--";
-            document.getElementById("lon").innerText = lon || "--";
+            document.getElementById("lat").innerText = lat || "30.516077";
+            document.getElementById("lon").innerText = lon || "76.659956";
 
-            // update graphs
+            // Update charts
             if (temp) updateChart(tempChart, temp);
             if (hum) updateChart(humChart, hum);
             if (bpm) updateChart(bpmChart, bpm);
             if (spo2) updateChart(spo2Chart, spo2);
             if (dist) updateChart(distChart, dist);
 
-            // update GPS map
-            if (lat && lon) {
-                map.setView([lat, lon], 15);
-                marker.setLatLng([lat, lon]);
-            }
+            // Update map
+            let newLat = lat || DEFAULT_LAT;
+            let newLon = lon || DEFAULT_LON;
+
+            map.setView([newLat, newLon], 15);
+            marker.setLatLng([newLat, newLon]);
+
         })
         .catch(err => console.error(err));
 }
 
 setInterval(fetchData, 30000);
 fetchData();
+
 </script>
 
 </body>
