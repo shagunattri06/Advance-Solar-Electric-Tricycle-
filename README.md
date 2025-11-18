@@ -72,14 +72,6 @@ All values are fetched from the **_ThingSpeak API_** and visualized using **_Cha
 
 ---
 
-## 🛰️ **_Future Enhancements_**
-- Battery voltage monitoring  
-- Motor speed/torque visualization  
-- ESP32 sleep mode optimization  
-- SMS alerts / mobile app  
-- Cloud storage (Firebase / MongoDB)
-
----
 
 ## 👤 **_Author_**
 **_Shagun Attri_**  
